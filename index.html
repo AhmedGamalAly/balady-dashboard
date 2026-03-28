@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة متابعة المراقبين — بلدي</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f4f1;--surface:#fff;--border:#e2e0d8;
+  --text:#1a1916;--text2:#6b6960;--text3:#9b9890;
+  --green:#2e7d32;--green-bg:#e8f5e9;
+  --amber:#b45309;--amber-bg:#fef3c7;
+  --blue:#1565c0;--blue-bg:#e3f2fd;
+  --red:#c62828;--red-bg:#ffebee;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:'IBM Plex Sans Arabic','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+.page{max-width:1140px;margin:0 auto;padding:28px 20px 60px;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.header-title{font-size:20px;font-weight:600;}
+.header-sub{font-size:12px;color:var(--text2);margin-top:3px;}
+.header-date{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 14px;font-size:12px;color:var(--text2);}
+.nav{display:flex;gap:0;margin-bottom:24px;border-bottom:1.5px solid var(--border);}
+.nav-tab{font-size:13px;font-weight:500;padding:9px 20px;cursor:pointer;color:var(--text2);border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all .15s;}
+.nav-tab.active{color:var(--text);border-bottom-color:var(--text);}
+.nav-tab:hover:not(.active){color:var(--text);}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.kpi-label{font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500;}
+.kpi-value{font-size:26px;font-weight:600;line-height:1;}
+.kpi-delta{font-size:12px;font-weight:500;margin-top:6px;}
+.d-up{color:var(--green);}.d-down{color:var(--red);}.d-same{color:var(--text3);}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.card-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-top:14px;}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.toolbar-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;}
+.controls{display:flex;gap:8px;flex-wrap:wrap;}
+input,select{font-family:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);outline:none;}
+input:focus,select:focus{border-color:#888;}
+input{width:200px;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:11px;color:var(--text2);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);}
+tbody tr:hover{background:var(--bg);}
+tbody td{padding:9px 10px;vertical-align:middle;}
+.badge{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;white-space:nowrap;}
+.bg{background:var(--green-bg);color:var(--green);}
+.ba{background:var(--amber-bg);color:var(--amber);}
+.br{background:var(--red-bg);color:var(--red);}
+.bb{background:var(--blue-bg);color:var(--blue);}
+.bar-wrap{display:flex;align-items:center;gap:7px;}
+.bar-bg{background:var(--bg);border-radius:3px;height:6px;width:72px;overflow:hidden;}
+.bar-fill{height:6px;border-radius:3px;}
+.cmp-dates{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.day-pill{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 16px;font-size:13px;}
+.day-dot{width:10px;height:10px;border-radius:50%;}
+.cmp-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.cmp-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.cmp-label{font-size:11px;color:var(--text2);font-weight:500;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;}
+.cmp-row-lbl{font-size:11px;color:var(--text3);}
+.cmp-bars{margin-top:10px;}
+.cmp-bar-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.cmp-bar-lbl{font-size:11px;color:var(--text3);width:32px;text-align:right;}
+.cmp-bar-bg{background:var(--bg);border-radius:3px;height:8px;flex:1;overflow:hidden;}
+.cmp-bar-fill{height:8px;border-radius:3px;}
+.cmp-delta{font-size:13px;font-weight:600;margin-top:10px;}
+.changes-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.change-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.ci{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:var(--radius-sm);font-size:13px;}
+.ci-up{background:var(--green-bg);}
+.ci-down{background:var(--red-bg);}
+.ci-new{background:var(--blue-bg);}
+.ci-gone{background:#f3e5f5;}
+.ci-name{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px;}
+.ci-nums{display:flex;gap:10px;align-items:center;font-size:12px;white-space:nowrap;}
+.arr-up{color:var(--green);font-weight:700;}
+.arr-down{color:var(--red);font-weight:700;}
+.no-data{text-align:center;padding:16px;color:var(--text3);font-size:13px;}
+.hist-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){
+  .kpi-grid,.cmp-kpis,.changes-grid,.hist-cards{grid-template-columns:1fr 1fr;}
+  .charts-row{grid-template-columns:1fr;}
+  input{width:140px;}
+}
+@media(max-width:480px){
+  .kpi-grid,.cmp-kpis,.changes-grid,.hist-cards{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <div>
+    <div class="header-title">لوحة متابعة المراقبين</div>
+    <div class="header-sub">إدارة المراقبة · أمانة منطقة المدينة المنورة</div>
+  </div>
+  <div class="header-date" id="hdr-date">—</div>
+</div>
+
+<div class="nav">
+  <div class="nav-tab active" onclick="switchTab('today',this)">بيانات اليوم</div>
+  <div class="nav-tab" onclick="switchTab('compare',this)">المقارنة اليومية</div>
+  <div class="nav-tab" onclick="switchTab('history',this)">السجل التاريخي</div>
+</div>
+
+<!-- TODAY -->
+<div class="tab-pane active" id="tab-today">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">إجمالي المعاملات</div><div class="kpi-value" id="k-total">—</div><div class="kpi-delta" id="k-total-d"></div></div>
+    <div class="kpi"><div class="kpi-label">بانتظار المراجعة والاعتماد</div><div class="kpi-value" id="k-done" style="color:var(--green)">—</div><div class="kpi-delta" id="k-done-d"></div></div>
+    <div class="kpi"><div class="kpi-label">بانتظار التفتيش</div><div class="kpi-value" id="k-pend" style="color:var(--amber)">—</div><div class="kpi-delta" id="k-pend-d"></div></div>
+    <div class="kpi"><div class="kpi-label">مراقبون نشطون</div><div class="kpi-value" id="k-act" style="color:var(--blue)">—</div><div class="kpi-delta" id="k-act-d"></div></div>
+  </div>
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">حالة المعاملات</div>
+      <div class="legend">
+        <span class="legend-item"><span class="leg-dot" style="background:var(--green)"></span>بانتظار المراجعة</span>
+        <span class="legend-item"><span class="leg-dot" style="background:var(--amber)"></span>بانتظار التفتيش</span>
+      </div>
+      <div style="position:relative;height:200px"><canvas id="cStatus"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">توزيع حسب البلدية</div>
+      <div class="legend" id="legMun"></div>
+      <div style="position:relative;height:200px"><canvas id="cMun"></canvas></div>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="toolbar">
+      <div class="toolbar-title">ترتيب المراقبين</div>
+      <div class="controls">
+        <input type="text" id="srch" placeholder="ابحث باسم المراقب..." oninput="renderTable()">
+        <select id="flt" onchange="renderTable()">
+          <option value="all">كل الحالات</option>
+          <option value="done">لديهم مراجعة</option>
+          <option value="pend">لديهم تفتيش</option>
+          <option value="zero">صفر مراجعة</option>
+        </select>
+        <select id="srt" onchange="renderTable()">
+          <option value="total">الإجمالي</option>
+          <option value="done">المراجعة</option>
+          <option value="pend">التفتيش</option>
+          <option value="rate">نسبة الإنجاز</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>اسم المراقب</th><th>الإجمالي</th><th>بانتظار المراجعة</th><th>بانتظار التفتيش</th><th>نسبة الإنجاز</th><th>التغيير عن 25/03</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div class="tab-pane" id="tab-compare">
+  <div class="cmp-dates">
+    <div class="day-pill"><div class="day-dot" style="background:#1565c0"></div>25/03/2026</div>
+    <div class="day-pill"><div class="day-dot" style="background:#2e7d32"></div>28/03/2026</div>
+  </div>
+  <div class="cmp-kpis">
+    <div class="cmp-kpi"><div class="cmp-label">إجمالي المعاملات</div><div id="cmpTotal"></div></div>
+    <div class="cmp-kpi"><div class="cmp-label">بانتظار المراجعة</div><div id="cmpDone"></div></div>
+    <div class="cmp-kpi"><div class="cmp-label">بانتظار التفتيش</div><div id="cmpPend"></div></div>
+  </div>
+  <div class="changes-grid">
+    <div class="card"><div class="card-title">زيادة في المعاملات</div><div class="change-list" id="chgUp"></div></div>
+    <div class="card"><div class="card-title">نقصان في المعاملات</div><div class="change-list" id="chgDown"></div></div>
+    <div class="card"><div class="card-title">مراقبون جدد في 28/03</div><div class="change-list" id="chgNew"></div></div>
+    <div class="card"><div class="card-title">مراقبون غابوا في 28/03</div><div class="change-list" id="chgGone"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">الأكثر تحولاً من تفتيش إلى مراجعة</div>
+    <div class="change-list" id="chgStatus"></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="tab-pane" id="tab-history">
+  <div class="hist-cards">
+    <div class="card"><div class="card-title">تطور إجمالي المعاملات</div><div style="position:relative;height:220px"><canvas id="cHist"></canvas></div></div>
+    <div class="card"><div class="card-title">نسبة الإنجاز اليومية</div><div style="position:relative;height:220px"><canvas id="cRate"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">مراجعة vs تفتيش يومياً</div>
+    <div style="position:relative;height:220px"><canvas id="cStack"></canvas></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const HISTORY = [
+  {
+    date:"25/03/2026",total:2007,done:1100,pending:907,
+    municipality:{"قباء":811,"العوالي":554,"العقيق":464,"أحد":169,"بلدية المنطقة المركزية":9},
+    inspectors:[
+      {name:"عبدالعزيز رجاء حمود الصاعدي",total:210,done:85,pending:125,rate:40},
+      {name:"غازي بن شداد بن مرزوق الحربي",total:178,done:178,pending:0,rate:100},
+      {name:"حمد بن هنيدي بن عيد العلوي",total:175,done:175,pending:0,rate:100},
+      {name:"طلال فريج عوده الحبيشي",total:145,done:80,pending:65,rate:55},
+      {name:"محمد بن مناور بن فحيط الحجيلي",total:141,done:54,pending:87,rate:38},
+      {name:"هاني محمد مرشد الرحيلي",total:134,done:88,pending:46,rate:66},
+      {name:"احمد رزيق بن سليم اللهيبي",total:132,done:7,pending:125,rate:5},
+      {name:"احمد راشد مسلم النخلي",total:117,done:103,pending:14,rate:88},
+      {name:"خالد مفرح غرامه عسيري",total:105,done:1,pending:104,rate:1},
+      {name:"ماهر عبدالرحمن سعيدان العوفي",total:103,done:29,pending:74,rate:28},
+      {name:"عبدالله بن صالح بن قاسم النخلي",total:98,done:0,pending:98,rate:0},
+      {name:"عوده صالح حمزه الخيبري",total:78,done:78,pending:0,rate:100},
+      {name:"محمد سليم سالم العازمي",total:70,done:1,pending:69,rate:1},
+      {name:"حاتم عبدربه عبدالله الجهني",total:64,done:64,pending:0,rate:100},
+      {name:"سليمان عيد نايف الجهني",total:61,done:0,pending:61,rate:0},
+      {name:"عدي مناور بن عبيد السحيمي",total:57,done:0,pending:57,rate:0},
+      {name:"يوسف بن ذياب بن سعد السحيمي",total:55,done:55,pending:0,rate:100},
+      {name:"عبدالله محمد سليمان العوفي",total:52,done:52,pending:0,rate:100},
+      {name:"فايز بن عيد بن علي الأحمدي",total:48,done:0,pending:48,rate:0},
+      {name:"بندر عبدالله نافع السحيمي",total:44,done:0,pending:44,rate:0},
+      {name:"عبدالرحمن محمد حسن عسيري",total:43,done:43,pending:0,rate:100},
+      {name:"محمد بن جمعان بن بريك العوفي",total:36,done:36,pending:0,rate:100},
+      {name:"عبدالرحمن سمير فواز اللهيبي",total:35,done:0,pending:35,rate:0},
+      {name:"فيصل صلاح ظويهر الجهني",total:31,done:31,pending:0,rate:100},
+      {name:"محمد عبدالله راشد الحريقي",total:27,done:0,pending:27,rate:0},
+      {name:"ياسر حمدان صالح الحسيني",total:25,done:0,pending:25,rate:0},
+      {name:"عادل بن طالب بن حسن الجرفي",total:24,done:24,pending:0,rate:100},
+      {name:"حسين بن مسعود بن صالح النخلي",total:22,done:22,pending:0,rate:100},
+      {name:"احمد محمد حامد الحمدي",total:20,done:20,pending:0,rate:100},
+      {name:"مجدي بن خليل بن محمد ابوعيسى",total:18,done:0,pending:18,rate:0},
+      {name:"فارس سالم واصل الحجيلي",total:16,done:0,pending:16,rate:0},
+      {name:"عبدالمنعم سعدي علي البركاني",total:14,done:14,pending:0,rate:100},
+      {name:"علي رويشد رشيد الرشيدي",total:13,done:0,pending:13,rate:0},
+      {name:"رائد عياف عطيه السفياني",total:12,done:12,pending:0,rate:100},
+      {name:"عبدالله أمين عبدالله نور",total:10,done:0,pending:10,rate:0},
+      {name:"محمد بن هليل بن نافع الرشيدي",total:9,done:9,pending:0,rate:100},
+      {name:"نهار راشد غانم الجهني",total:8,done:0,pending:8,rate:0},
+      {name:"عباس عبدالله عباس النخلي",total:6,done:0,pending:6,rate:0},
+      {name:"محمد احمد حامد الجهنى",total:5,done:0,pending:5,rate:0},
+      {name:"فالح ناشي الهاجوج",total:3,done:3,pending:0,rate:100}
+    ]
+  },
+  {
+    date:"28/03/2026",total:1530,done:603,pending:927,
+    municipality:{"العوالي":626,"العقيق":539,"قباء":185,"أحد":171,"بلدية المنطقة المركزية":9},
+    inspectors:[
+      {name:"هاني محمد مرشد الرحيلي",total:123,done:113,pending:10,rate:92},
+      {name:"احمد راشد مسلم النخلي",total:109,done:108,pending:1,rate:99},
+      {name:"خالد مفرح غرامه عسيري",total:104,done:0,pending:104,rate:0},
+      {name:"مجدي بن خليل بن محمد ابوعيسى",total:102,done:0,pending:102,rate:0},
+      {name:"غازي بن شداد بن مرزوق الحربي",total:101,done:51,pending:50,rate:50},
+      {name:"عبدالله بن صالح بن قاسم النخلي",total:98,done:0,pending:98,rate:0},
+      {name:"ماهر عبدالرحمن سعيدان العوفي",total:93,done:79,pending:14,rate:85},
+      {name:"محمد بن مناور بن فحيط الحجيلي",total:75,done:16,pending:59,rate:21},
+      {name:"منصور حمود خلف العنزي",total:71,done:0,pending:71,rate:0},
+      {name:"محمد سليم سالم العازمي",total:70,done:1,pending:69,rate:1},
+      {name:"سليمان عيد نايف الجهني",total:61,done:0,pending:61,rate:0},
+      {name:"احمد رزيق بن سليم اللهيبي",total:52,done:7,pending:45,rate:13},
+      {name:"عبدالعزيز رجاء حمود الصاعدي",total:40,done:35,pending:5,rate:88},
+      {name:"فارس سالم واصل الحجيلي",total:29,done:0,pending:29,rate:0},
+      {name:"عبدالعزيز خليل عيسى الخيبري",total:28,done:0,pending:28,rate:0},
+      {name:"عبدالرحمن سمير فواز اللهيبي",total:28,done:0,pending:28,rate:0},
+      {name:"طلال فريج عوده الحبيشي",total:33,done:30,pending:3,rate:91},
+      {name:"فايز بن عيد بن علي الأحمدي",total:26,done:0,pending:26,rate:0},
+      {name:"عبداللطيف بن سليم بن سالم الجهني",total:21,done:0,pending:21,rate:0},
+      {name:"عبدالله محمد سليمان العوفي",total:20,done:20,pending:0,rate:100},
+      {name:"عدي مناور بن عبيد السحيمي",total:18,done:0,pending:18,rate:0},
+      {name:"عبدالرحمن محمد حسن عسيري",total:17,done:17,pending:0,rate:100},
+      {name:"فايز شتيوى بن عبدالله الجهني",total:15,done:0,pending:15,rate:0},
+      {name:"حمد بن هنيدي بن عيد العلوي",total:1,done:1,pending:0,rate:100},
+      {name:"علي رويشد رشيد الرشيدي",total:9,done:0,pending:9,rate:0},
+      {name:"مجدي بن سالم بن حضيض الحجيلي",total:8,done:8,pending:0,rate:100},
+      {name:"ياسر حمدان صالح الحسيني",total:7,done:0,pending:7,rate:0},
+      {name:"عبدالمنعم سعدي علي البركاني",total:7,done:7,pending:0,rate:100},
+      {name:"حمد حميد مسلم الرفاعي",total:6,done:6,pending:0,rate:100},
+      {name:"نهار راشد غانم الجهني",total:6,done:0,pending:6,rate:0},
+      {name:"حسين بن مسعود بن صالح النخلي",total:5,done:5,pending:0,rate:100},
+      {name:"فايز محمد فايز المغذوي",total:5,done:0,pending:5,rate:0},
+      {name:"تركي عليثه محمد الجهني",total:4,done:4,pending:0,rate:100},
+      {name:"عبدالله أمين عبدالله نور",total:4,done:0,pending:4,rate:0},
+      {name:"محمد بن هليل بن نافع الرشيدي",total:3,done:3,pending:0,rate:100},
+      {name:"عادل بن طالب بن حسن الجرفي",total:2,done:2,pending:0,rate:100},
+      {name:"محمد احمد حامد الجهنى",total:1,done:0,pending:1,rate:0}
+    ]
+  }
+];
+
+const T=HISTORY[HISTORY.length-1];
+const Y=HISTORY[HISTORY.length-2];
+const munColors=['#1565c0','#2e7d32','#b45309','#c62828','#6a1b9a','#00695c'];
+
+function delta(t,y){
+  const d=t-y,p=y>0?Math.round(Math.abs(d)/y*100):0;
+  if(d>0)return`<span class="d-up">▲ ${d} (+${p}%)</span>`;
+  if(d<0)return`<span class="d-down">▼ ${Math.abs(d)} (-${p}%)</span>`;
+  return`<span class="d-same">— لا تغيير</span>`;
+}
+
+// TODAY
+document.getElementById('hdr-date').textContent='بيانات بلدي · '+T.date;
+document.getElementById('k-total').textContent=T.total.toLocaleString('ar');
+document.getElementById('k-done').textContent=T.done.toLocaleString('ar');
+document.getElementById('k-pend').textContent=T.pending.toLocaleString('ar');
+document.getElementById('k-act').textContent=T.inspectors.length;
+document.getElementById('k-total-d').innerHTML=delta(T.total,Y.total);
+document.getElementById('k-done-d').innerHTML=delta(T.done,Y.done);
+document.getElementById('k-pend-d').innerHTML=delta(T.pending,Y.pending);
+document.getElementById('k-act-d').innerHTML=delta(T.inspectors.length,Y.inspectors.length);
+
+const munKeys=Object.keys(T.municipality);
+document.getElementById('legMun').innerHTML=munKeys.map((k,i)=>`<span class="legend-item"><span class="leg-dot" style="background:${munColors[i%munColors.length]}"></span>${k}</span>`).join('');
+new Chart(document.getElementById('cStatus'),{type:'doughnut',data:{labels:['مراجعة','تفتيش'],datasets:[{data:[T.done,T.pending],backgroundColor:['#2e7d32','#b45309'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}});
+new Chart(document.getElementById('cMun'),{type:'bar',data:{labels:munKeys,datasets:[{data:Object.values(T.municipality),backgroundColor:munColors,borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:11}}},x:{ticks:{font:{size:11}}}}}});
+
+const Ymap=Object.fromEntries(Y.inspectors.map(i=>[i.name,i]));
+function renderTable(){
+  const q=document.getElementById('srch').value.trim();
+  const f=document.getElementById('flt').value;
+  const s=document.getElementById('srt').value;
+  let rows=T.inspectors.filter(i=>{
+    if(q&&!i.name.includes(q))return false;
+    if(f==='done'&&i.done===0)return false;
+    if(f==='pend'&&i.pending===0)return false;
+    if(f==='zero'&&i.done>0)return false;
+    return true;
+  });
+  rows.sort((a,b)=>s==='total'?b.total-a.total:s==='done'?b.done-a.done:s==='pend'?b.pending-a.pending:b.rate-a.rate);
+  document.getElementById('tbody').innerHTML=rows.map((i,idx)=>{
+    const rc=i.rate>=80?'#2e7d32':i.rate>=40?'#b45309':'#c62828';
+    const yd=Ymap[i.name];
+    let chg='<span style="color:var(--text3);font-size:11px">—</span>';
+    if(yd){const d=i.total-yd.total;if(d>0)chg=`<span class="arr-up">▲${d}</span>`;else if(d<0)chg=`<span class="arr-down">▼${Math.abs(d)}</span>`;}
+    else chg='<span class="badge bb" style="font-size:10px">جديد</span>';
+    return`<tr><td style="font-size:11px;color:var(--text3)">${idx+1}</td><td style="font-weight:500;font-size:13px">${i.name}</td><td style="font-weight:600">${i.total}</td><td><span class="badge bg">${i.done}</span></td><td><span class="badge ba">${i.pending}</span></td><td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${i.rate}%;background:${rc}"></div></div><span style="font-size:12px;font-weight:500;color:${rc};min-width:34px">${i.rate}%</span></div></td><td>${chg}</td></tr>`;
+  }).join('');
+}
+renderTable();
+
+// COMPARE
+function cmpBlock(yv,tv,id){
+  const d=tv-yv,p=yv>0?Math.round(Math.abs(d)/yv*100):0;
+  const mx=Math.max(yv,tv)||1;
+  const cls=d>0?'d-up':d<0?'d-down':'d-same';
+  const arr=d>0?'▲':d<0?'▼':'—';
+  document.getElementById(id).innerHTML=`
+    <div class="cmp-row"><span class="cmp-row-lbl">25/03</span><span style="font-weight:500">${yv.toLocaleString('ar')}</span></div>
+    <div class="cmp-row"><span class="cmp-row-lbl">28/03</span><span style="font-weight:600;font-size:15px">${tv.toLocaleString('ar')}</span></div>
+    <div class="cmp-bars">
+      <div class="cmp-bar-row"><span class="cmp-bar-lbl">25/03</span><div class="cmp-bar-bg"><div class="cmp-bar-fill" style="width:${Math.round(yv/mx*100)}%;background:#1565c0"></div></div></div>
+      <div class="cmp-bar-row"><span class="cmp-bar-lbl">28/03</span><div class="cmp-bar-bg"><div class="cmp-bar-fill" style="width:${Math.round(tv/mx*100)}%;background:#2e7d32"></div></div></div>
+    </div>
+    <div class="cmp-delta ${cls}">${arr} ${Math.abs(d).toLocaleString('ar')} (${p}%)</div>`;
+}
+cmpBlock(Y.total,T.total,'cmpTotal');
+cmpBlock(Y.done,T.done,'cmpDone');
+cmpBlock(Y.pending,T.pending,'cmpPend');
+
+const Tm=Object.fromEntries(T.inspectors.map(i=>[i.name,i]));
+const Ym=Object.fromEntries(Y.inspectors.map(i=>[i.name,i]));
+const allN=new Set([...Object.keys(Tm),...Object.keys(Ym)]);
+const changes=[];
+allN.forEach(n=>{
+  const yt=Ym[n]?.total||0,tt=Tm[n]?.total||0;
+  const yd=Ym[n]?.done||0,td=Tm[n]?.done||0;
+  changes.push({name:n,yt,tt,diff:tt-yt,ddiff:td-yd});
+});
+changes.sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+const noData='<div class="no-data">لا يوجد</div>';
+const ups=changes.filter(c=>c.diff>0&&Ym[c.name]).slice(0,8);
+const downs=changes.filter(c=>c.diff<0).slice(0,8);
+const newOnes=T.inspectors.filter(i=>!Ym[i.name]).slice(0,8);
+const gone=Y.inspectors.filter(i=>!Tm[i.name]).slice(0,8);
+const stChg=changes.filter(c=>c.ddiff>0&&Ym[c.name]).sort((a,b)=>b.ddiff-a.ddiff).slice(0,8);
+document.getElementById('chgUp').innerHTML=ups.length?ups.map(c=>`<div class="ci ci-up"><span class="ci-name">${c.name}</span><div class="ci-nums"><span style="color:var(--text3)">${c.yt}←${c.tt}</span><span class="arr-up">▲${c.diff}</span></div></div>`).join(''):noData;
+document.getElementById('chgDown').innerHTML=downs.length?downs.map(c=>`<div class="ci ci-down"><span class="ci-name">${c.name}</span><div class="ci-nums"><span style="color:var(--text3)">${c.yt}←${c.tt}</span><span class="arr-down">▼${Math.abs(c.diff)}</span></div></div>`).join(''):noData;
+document.getElementById('chgNew').innerHTML=newOnes.length?newOnes.map(i=>`<div class="ci ci-new"><span class="ci-name">${i.name}</span><div class="ci-nums"><span class="badge bb">جديد · ${i.total} معاملة</span></div></div>`).join(''):noData;
+document.getElementById('chgGone').innerHTML=gone.length?gone.map(i=>`<div class="ci ci-gone"><span class="ci-name">${i.name}</span><div class="ci-nums"><span style="color:#6a1b9a;font-weight:500">غاب · كان ${i.total}</span></div></div>`).join(''):noData;
+document.getElementById('chgStatus').innerHTML=stChg.length?stChg.map(c=>`<div class="ci ci-up"><span class="ci-name">${c.name}</span><div class="ci-nums"><span style="color:var(--text3)">مراجعة: ${Ym[c.name].done}←${Tm[c.name].done}</span><span class="arr-up">▲${c.ddiff}</span></div></div>`).join(''):noData;
+
+// HISTORY
+const labels=HISTORY.map(d=>d.date);
+new Chart(document.getElementById('cHist'),{type:'line',data:{labels,datasets:[{data:HISTORY.map(d=>d.total),borderColor:'#1565c0',backgroundColor:'rgba(21,101,192,.08)',borderWidth:2,pointRadius:6,tension:.3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,ticks:{font:{size:11}}},x:{ticks:{font:{size:11}}}}}});
+new Chart(document.getElementById('cRate'),{type:'line',data:{labels,datasets:[{data:HISTORY.map(d=>Math.round(d.done/d.total*100)),borderColor:'#2e7d32',backgroundColor:'rgba(46,125,50,.08)',borderWidth:2,pointRadius:6,tension:.3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{font:{size:11},callback:v=>v+'%'}},x:{ticks:{font:{size:11}}}}}});
+new Chart(document.getElementById('cStack'),{type:'bar',data:{labels,datasets:[{label:'مراجعة',data:HISTORY.map(d=>d.done),backgroundColor:'#2e7d32',borderRadius:4},{label:'تفتيش',data:HISTORY.map(d=>d.pending),backgroundColor:'#b45309',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},boxWidth:12}}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,ticks:{font:{size:11}}}}}});
+
+function switchTab(id,el){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+</script>
+</body>
+</html>
